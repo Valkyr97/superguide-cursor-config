@@ -1,0 +1,35 @@
+---
+description: Conventions for Supabase database migrations and SQL in msg-supabase-infra
+globs: msg-supabase-infra/**/*.sql,msg-supabase-infra/supabase/migrations/**
+alwaysApply: false
+---
+
+# Supabase Migration Conventions
+
+## Migration Files
+
+- Migrations live in `msg-supabase-infra/supabase/migrations/`.
+- Use the Supabase CLI to generate migration files: `supabase migration new <name>`.
+- Migration filenames are timestamped automatically — do not manually name them.
+- Each migration should be atomic — one logical change per file.
+
+## SQL Standards
+
+- Use lowercase for SQL keywords (`select`, `create table`, `alter table`).
+- Always specify `IF NOT EXISTS` for `CREATE TABLE` and `CREATE INDEX`.
+- Always specify `IF EXISTS` for `DROP` statements.
+- Include `ON DELETE` and `ON UPDATE` clauses for foreign keys.
+- Add comments on non-obvious columns or constraints.
+
+## Schema Dumps
+
+- `supabase/dumps/develop/` — development environment dumps.
+- `supabase/dumps/main/` — production environment dumps.
+- Root SQL files (`schema.sql`, `data.sql`, `roles.sql`) are reference snapshots.
+
+## Safety
+
+- NEVER write destructive migrations (dropping columns/tables with data) without explicit user confirmation.
+- Always provide a rollback strategy for structural changes.
+- Test migrations locally before applying to any shared environment.
+- RLS (Row Level Security) policies MUST be reviewed for security implications.

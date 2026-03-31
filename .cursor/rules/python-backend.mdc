@@ -1,0 +1,76 @@
+---
+description: Backend API conventions for all Python Lambda endpoints across msg-guest, msg-guide, and msg-marketplace
+globs: msg-guest/api/**/*.py,msg-guest/api_public/**/*.py,msg-guide/api/**/*.py,msg-marketplace/api/**/*.py
+alwaysApply: false
+---
+
+# Python Backend API Rules
+
+## Directory Structure
+
+- Endpoints live in `api/` (authenticated) and `api_public/` (public/guest, msg-guest only).
+- Only these HTTP verb files are allowed: `get.py`, `post.py`, `put.py`, `delete.py`.
+- Endpoint paths map 1:1 to folder structure.
+- Path parameters use double-underscore folders: `__guideid__`, `__id__`.
+- Path parameter names MUST NOT contain underscores or hyphens — use a single concatenated word.
+
+## Handler Skeleton
+
+```python
+from main import *
+from decorators import klug  # or: from decorators import public_api
+
+@klug()
+def lambda_handler(event, context):
+    ...
+```
+
+- Function MUST be named `lambda_handler`.
+- `from main import *` is required — it re-exports all shared-layer modules.
+- Never import directly from `layers/shared/` submodules in endpoint files.
+
+## Decorators
+
+| Decorator | Directory | Purpose |
+|---|---|---|
+| `@klug()` | `api/` (required), `api_public/` (allowed) | Wraps raw event into `Event` object, standardizes responses, logs errors with user context |
+| `@public_api()` | `api_public/` only | Same wrapping, no user context in error logs |
+
+Both handle CORS headers, JSON serialization, and datetime encoding automatically.
+
+## Parameter Access
+
+- Path: `event.path("paramname")`
+- Query: `event.query("paramName")` or `event.safe_query_param("name", default, type)`
+- Body: `event.body()` (already parsed, no `json.loads()` needed)
+- Safe extraction: `event.safe_body_param("name", default, required)`
+
+## Responses
+
+- Success: return data directly — the decorator wraps it as 200.
+- Error: use `event.create_error_response(status_code, message)`.
+- Do NOT call `json.dumps()` on return values.
+- Do NOT hand-craft `{'statusCode': ..., 'body': ...}` dicts.
+- Do NOT add manual CORS headers.
+
+## Validation
+
+- Validate UUID parameters with `event.validate_uuid()` before queries.
+- Validate required body fields with `event.validate_required_fields(body, fields)`.
+- Use `event.get_guide_id()` instead of manual guide lookups.
+- Use `event.paginate_query(query, limit, offset)` for list endpoints.
+
+## Supabase Integration
+
+- Access via `event.supabase.table("table_name").select("*").execute()`.
+- NEVER execute queries inside `for` or `while` loops — batch with `.in_()` or bulk helpers.
+- Prefer Supabase client over raw SQL (`event.select()`).
+
+## Database Schema
+
+Run `python get_schema.py` from the project root to inspect the current schema.
+
+## Frontend Integration
+
+- msg-guest/msg-guide: `callApi()` for authenticated, `callPublicApi()` for public endpoints.
+- msg-marketplace: `callApi()` for all endpoints.

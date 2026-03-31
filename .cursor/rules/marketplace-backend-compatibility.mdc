@@ -1,0 +1,43 @@
+---
+description: Compatibility and legacy convention handling for msg-marketplace backend code
+globs: msg-marketplace/api/**/*.py,msg-lambda-layers/layers/shared/**/*.py
+alwaysApply: false
+---
+
+# Backend Compatibility (Marketplace)
+
+> **Precedence:** This rule overrides `python-backend.mdc` when they conflict on naming or editing conventions.
+
+The repository has mixed conventions from organic growth. These rules govern how to handle that reality without breaking existing contracts.
+
+## Route naming
+
+The general rule says "prefer underscores over hyphens", but the actual `api/` tree uses hyphens extensively: `upload-image`, `import-excel`, `delete-image`, `tag-groups`, `city-foreign-experiences`, `searching-categories`, `other-city-bookable`, `upload-cropped-image`, `set-cover`.
+
+`setup/endpoints.py` maps folder names directly to URLs. Renaming a folder changes the public API.
+
+- When adding to an existing resource tree, MUST match the naming style already present.
+- When creating a new top-level resource with no existing siblings, PREFER underscores.
+- MUST NOT rename existing folders to normalize naming — that is a breaking API change.
+- Path parameter folders: `__id__`, `__experienceid__` (no underscores/hyphens in param names).
+
+## Editing existing code
+
+- PRESERVE the file's current conventions for lines you are not changing.
+- When touching a specific line, SHOULD migrate it to the preferred convention.
+- MUST NOT refactor an entire file to "fix" conventions unless explicitly asked.
+
+## Error response migration
+
+- Preferred: `event.error_response(status_code, message)`
+- Legacy (do not use in new code): `event.create_error_response()` — different shape.
+- Legacy (do not use in new code): manual `{'statusCode': ..., 'body': ...}` dicts.
+- In new files: always use `error_response()`.
+- In edited files: migrate only on lines you are actively changing.
+
+## API contract preservation
+
+- MUST NOT change an endpoint's response shape without explicit instruction.
+- MUST NOT change an endpoint's URL path without explicit instruction.
+- MUST NOT remove query parameters or body fields that the frontend depends on.
+- When adding new fields, existing fields MUST remain unchanged.

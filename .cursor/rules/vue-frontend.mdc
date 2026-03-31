@@ -1,0 +1,48 @@
+---
+description: Shared Vue 3 frontend conventions for msg-guest and msg-guide apps
+globs: msg-guest/src/**/*.vue,msg-guest/src/**/*.ts,msg-guide/src/**/*.vue,msg-guide/src/**/*.ts
+alwaysApply: false
+---
+
+# Vue 3 Frontend Conventions
+
+Applies to both msg-guest and msg-guide (Vue 3 + Vite + TypeScript + Tailwind CSS).
+
+## Component Structure
+
+- Use `<script setup lang="ts">` for all components.
+- Colocate component logic, template, and styles in `.vue` SFCs.
+- Import aliases: use `@/` for `src/`.
+
+## File Organization
+
+- Pages/views: `src/views/` or `src/pages/`
+- Reusable components: `src/components/shared/`
+- UI primitives (shadcn-vue): `src/components/ui/`
+- Composables: `src/composables/`
+- Utilities: `src/lib/`
+- Types: `src/types/`
+- Router: `src/router/`
+
+## State Management
+
+- **Pinia stores** (`src/stores/`): for state shared across 3+ components in different routes.
+- **Composables**: for local/ephemeral state, form inputs, UI toggles, single-component data.
+- KISS: if a composable with `ref`/`reactive` solves it, don't introduce a store.
+
+## API Calls
+
+- Use `callApi()` from `@/lib/api` for authenticated endpoints.
+- Use `callPublicApi()` from `@/lib/api-public` for guest/public endpoints (msg-guest only).
+- Never use raw `axios` or `fetch` directly.
+
+## Styling
+
+- Tailwind CSS utility classes for all styling.
+- Use `cn()` (tailwind-merge) for conditional class merging.
+- Radix Vue / shadcn-vue for accessible UI primitives.
+
+## Validation
+
+- Zod schemas for form and data validation.
+- VueUse composables for common reactive patterns.

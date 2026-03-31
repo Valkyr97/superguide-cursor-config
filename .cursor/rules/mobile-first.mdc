@@ -1,0 +1,13 @@
+---
+description: Mobile-first layout requirement for guest and guide Vue apps
+globs: msg-guest/src/**/*.vue,msg-guest/src/**/*.ts,msg-guide/src/**/*.vue,msg-guide/src/**/*.ts
+alwaysApply: false
+---
+
+# Mobile-First Layout
+
+Every view, layout, and component in the guest and guide apps MUST be designed mobile-first. These apps are primarily consumed on mobile devices.
+
+- Start with the mobile layout, then add responsive breakpoints for larger screens.
+- Touch targets must be at least 44x44px.
+- Avoid hover-only interactions — they don't work on touch devices.

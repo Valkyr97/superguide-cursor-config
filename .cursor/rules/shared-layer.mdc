@@ -1,0 +1,36 @@
+---
+description: Rules for the shared Python Lambda layer used by all backend apps
+globs: msg-lambda-layers/**/*.py
+alwaysApply: false
+---
+
+# Shared Lambda Layer Rules
+
+`msg-lambda-layers/layers/shared/` is consumed by msg-guest, msg-guide, AND msg-marketplace. Changes here affect all three apps.
+
+## Backward Compatibility — MUST
+
+- NEVER rename, remove, or change the signature of existing methods in `event.py`, `decorators.py`, `data_loader.py`, entity classes, or factory classes.
+- New methods and classes MAY be added freely.
+- If a signature change is truly needed, confirm with the user first and document the migration path for all consuming apps.
+
+## Key Modules
+
+| Module | Contains |
+|---|---|
+| `event.py` | `Event` class — Supabase client, CacheWrapper, CRUD helpers, validation, identity, query building |
+| `decorators.py` | `@klug()`, `@public_api()` — response standardization |
+| `exceptions.py` | `BadJsonError`, `PathParameterError`, `QueryParameterError`, `ParameterError` |
+| `helpers.py` | `normalize_name()`, `invalidate_guide_share_caches()` |
+| `entities/` | `BaseEntity`/`BaseEntityFactory` and domain entities (all factories take `(supabase, cache=None)`) |
+| `data_loader.py` | `CityDataLoader` — parallel queries via `ThreadPoolExecutor` |
+| `mixpanel_util.py` | `track_event()`, `people_set()` |
+| `experience_utils.py` | `generate_thumbnail_url()` |
+
+## Testing Impact
+
+Before merging changes, verify that endpoint tests in all three consuming apps still pass. A shared-layer change that breaks one app blocks all deployments.
+
+## Third-Party Dependencies
+
+Pinned in `layers/thirdparty/requirements.txt`. When adding or upgrading a dependency, verify compatibility with all three apps' Lambda runtimes.

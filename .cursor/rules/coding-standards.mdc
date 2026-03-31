@@ -1,0 +1,29 @@
+---
+description: Core coding standards applied to all projects in the superguide workspace
+globs:
+alwaysApply: true
+---
+
+# Coding Standards
+
+- Keep files under 300 lines (hard limit 400). Extract composables, sub-components, helpers, or utilities when approaching the limit.
+- Make code modular. Separate logic into reusable, well-named files and folders.
+- Before writing new code, search for existing implementations — reuse before creating.
+- Duplicated logic across files MUST be extracted into a shared module.
+
+## Code Quality
+
+- Prefer the simplest solution that works — do not add abstractions, wrappers, or patterns beyond what the task requires.
+- Prefer immutability — use spread operators or new arrays/objects instead of mutating in place.
+- Use early returns to avoid deep nesting. Guard clauses at the top, happy path at the bottom.
+- Extract magic numbers and strings into named constants.
+- Run independent async operations in parallel with `Promise.all` (JS/TS) or equivalent patterns.
+- Comments should explain WHY, not narrate WHAT. If the code needs a comment to explain what it does, simplify the code instead.
+
+## Bugfixing Mode
+
+When the task is a bugfix:
+- Minimize changes — do not refactor unrelated code.
+- Do small iterations to avoid breaking things.
+- Summarize what you changed and why.
+- Do not change the UI unless necessary to fix the bug.

@@ -1,0 +1,59 @@
+---
+description: Hard backend invariants for msg-marketplace Python code in api/ and layers/shared/
+globs: msg-marketplace/api/**/*.py,msg-lambda-layers/layers/shared/**/*.py
+alwaysApply: false
+---
+
+# Backend Invariants (Marketplace)
+
+These rules apply to all Python backend code in msg-marketplace `api/` and the shared layer.
+Strength levels: MUST = hard invariant, SHOULD = strong default, PREFER = softer convention.
+
+## Query discipline
+
+- You MUST NOT execute Supabase queries inside `for` or `while` loops. Batch with `.in_()`, PostgREST embeds, or bulk helpers (`create_bulk_relationships`, `bulk_delete_relationships`).
+- You SHOULD prefer one well-formed Supabase query with embeds over multiple sequential queries, `ThreadPoolExecutor`, or new cache layers.
+- You MUST NOT concatenate user input into raw SQL strings. `Event.select()` has no parameterization. PREFER the Supabase client. If raw SQL is unavoidable, use `%s` placeholders with `psycopg2`.
+
+## Handler contract
+
+- Each endpoint file MUST contain exactly one handler: `@klug()` + `def lambda_handler(event, context):`.
+- You MUST NOT create a Supabase client in endpoint files. Always use `event.supabase`.
+- `@klug()` does NOT enforce authentication. It only wraps the raw event dict into an `Event` instance and standardizes the response. If the endpoint requires auth, you MUST check `event.user_id()` or `event.sub()` explicitly and return 401 when missing.
+- Use `@public_api()` for endpoints that intentionally skip auth context.
+
+## Error responses
+
+- You MUST use `event.error_response(status_code, message)` for all non-200 returns.
+- You MUST NOT use `event.create_error_response()` (legacy, different shape).
+- You MUST NOT hand-craft `{'statusCode': ..., 'body': ...}` dicts.
+- `@klug` catches unhandled exceptions and returns a 500 with traceback. You SHOULD NOT add a blanket `try/except` unless you need a domain-specific error message.
+
+## Success responses
+
+- Return data directly: `return response.data`, `return response.data[0]`, or `return {"key": "value"}`.
+- The `@klug` decorator wraps the return value in a 200 response automatically.
+- You MUST NOT invent new wrapper shapes.
+
+## Validation
+
+- You MUST validate all UUID path and query parameters with `event.validate_uuid()` before using them in queries.
+- You SHOULD validate required fields on POST/PUT using `event.validate_required_fields()` before touching the database.
+- `event.get_by_id()` and other CRUD helpers return `None`/`[]`/`False` on BOTH "not found" and "query failure". When the distinction matters (existence checks before writes), PREFER a direct Supabase query.
+
+## Cache
+
+- Every create/update/delete MUST invalidate affected `event.cache` keys.
+- For guide-related changes, use `invalidate_guide_share_caches(event, guide_id)`.
+
+## File discipline
+
+- **Reuse first:** Before extracting, creating helpers, or writing new logic: check `api/` and `layers/shared/` for existing patterns and reuse them.
+- New simple/medium files: aim for ~200 lines. Extract helpers to `layers/shared/` if the handler would grow beyond that.
+- New complex files (Excel, bulk, KPI): extract domain logic to `layers/shared/` from the start.
+- When editing existing files: if adding >40 lines, consider extraction; if the file >300 lines, PREFER extracting before adding.
+
+## Imports
+
+- Endpoint files use `from main import *` followed by `from decorators import klug`.
+- Additional stdlib/third-party imports go after these two lines, separated by a blank line.

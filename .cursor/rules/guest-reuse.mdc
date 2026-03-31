@@ -1,0 +1,45 @@
+---
+description: Enforce code reuse and file size limits for the msg-guest app
+globs: msg-guest/**
+alwaysApply: false
+---
+
+# Code Reuse and File Size Policy (Guest App)
+
+## Code Reuse — MANDATORY
+
+Before writing new code, MUST search for existing implementations:
+
+### Frontend
+- **Composables**: check `src/composables/index.ts` and `src/composables/` for existing hooks
+- **Components**: check `src/components/ui/` (primitives) and `src/components/shared/` (domain)
+- **Utilities**: check `src/lib/utils.ts`, `src/lib/api-utils.ts`, `src/lib/thumbnail-utils.ts`, `src/lib/date.ts`
+- **Types**: check `src/types/index.ts` before defining new interfaces
+- **API layer**: use `callApi` / `callPublicApi` — never raw axios or fetch
+- **State patterns**: use existing context modules (`auth-context.ts`, `city-context.ts`) before creating new global state
+- **Feedback components**: use `LoadingState.vue`, `ErrorState.vue`, `EmptyState.vue`
+
+### Backend
+- **Event helpers**: use `event.safe_query_param()`, `event.validate_required_fields()`, `event.create_error_response()`, `event.paginate_query()`, `event.get_guide_id()`
+- **Entities**: check `layers/shared/entities/`
+- **Data loader**: check `layers/shared/data_loader.py`
+- **Utilities**: check `layers/shared/helpers.py`, `layers/shared/utils.py`, `layers/shared/experience_utils.py`
+
+### Rule
+- If an existing module covers >= 80% of the need, extend it rather than creating a parallel implementation.
+- Duplicated logic across files MUST be extracted into a shared module.
+
+## File Size Limits
+
+**Target**: 300 lines | **Hard limit**: 400 lines
+
+- **Under 400 lines**: complete task normally, don't let it exceed 400.
+- **400-600 lines**: complete task AND extract at least one composable/sub-component/utility to bring it closer to 300.
+- **Over 600 lines**: propose a decomposition plan before making any addition. Exception: urgent bugfixes may fix in place but MUST warn about needed refactoring.
+
+### What to Extract
+- Template logic > 50 lines → sub-component in `src/components/shared/`
+- Reactive state + async logic → composable in `src/composables/`
+- Pure data transformations → utility in `src/lib/`
+- Type definitions > 20 lines → type file in `src/types/`
+- Backend queries + transformations → data loader or entity methods in `layers/shared/`

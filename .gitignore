@@ -1,0 +1,6 @@
+msg-guest/
+msg-guest-ai-subagents/
+msg-guide/
+msg-lambda-layers/
+msg-marketplace/
+msg-supabase-infra/

@@ -1,0 +1,42 @@
+---
+description: React frontend conventions for the msg-marketplace (Kloud) admin app
+globs: msg-marketplace/src/**/*.tsx,msg-marketplace/src/**/*.ts
+alwaysApply: false
+---
+
+# React Frontend Conventions (Marketplace / Kloud)
+
+React 19 + React Router 7 + Vite 6 + TypeScript + Tailwind 4.
+
+## Page and Component Structure
+
+- Views/pages live in `src/pages/`.
+- When creating a new page, also create the React Router mapping.
+- Each major block of a page gets its own component file in `src/components/`.
+- Reusable components that are not in `src/components/ui/` get their own file.
+
+## UI Patterns
+
+- All UI components use shadcn (Radix UI + Tailwind).
+- All buttons that call endpoints MUST show a loading state.
+- Destructive operations MUST show a confirmation dialog.
+- All backend interaction notifications use sonner toasts.
+
+## API Integration
+
+- Use `callApi()` for all endpoint calls.
+- When building a view, also write the relevant backend endpoints.
+
+## Forms and Validation
+
+- react-hook-form for form state management.
+- Zod schemas for validation.
+
+## Styling
+
+- Tailwind CSS 4 with `@tailwindcss/vite`.
+- Radix UI primitives for accessible components.
+
+## Note on Layout
+
+The marketplace is a desktop admin app — it is NOT mobile-first (unlike msg-guest and msg-guide).
