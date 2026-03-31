@@ -1,0 +1,77 @@
+---
+description: Conventions for booking system integrations (Ventrata, Bokun, FareHarbor, Bookeo)
+globs: msg-supabase-infra/**/booking*,msg-supabase-infra/**/experience_option*,msg-supabase-infra/**/availability*,msg-supabase-infra/**/webhook*,msg-*/api/**/booking*,msg-*/api/**/availability*,msg-*/api/**/webhook*,msg-data_model/**
+alwaysApply: false
+---
+
+# Booking Integrations
+
+## Canonical model
+
+`msg-data_model/` is the source of truth for the booking integration schema.
+Read `msg-data_model/ddl.sql` before creating or modifying migrations.
+Read `msg-data_model/platform_mappings.md` before mapping provider data.
+
+## Architecture rules
+
+- `suppliers` and `experiences` are the root entities. NEVER create parallel tables.
+- One supplier = one booking system. `suppliers.booking_system` holds the provider name. `suppliers.booking_system_data` jsonb holds credentials/config.
+- Only create a table when the entity needs independent querying. Sub-entities (unit types, extras, participants, answers, documents, payments) live as jsonb columns on their parent.
+- Holds are bookings with `status = 'on_hold'` — no separate table.
+- Contact info (booker) lives directly on `booking` — no separate customer table.
+
+## Tables (7 new + 1 ALTER)
+
+1. ALTER `suppliers` — add `booking_system text`
+2. `experience_option` — with `unit_types`, `extras`, `custom_fields` jsonb
+3. `availability_slot` — with `unit_prices` jsonb
+4. `booking` — with `participants`, `answers`, `documents`, `payments` jsonb
+5. `booking_line` — with `units`, `extras` jsonb
+6. `external_ref` — provider ID ↔ canonical ID
+7. `webhook_event` — with inline projection columns
+8. `sync_cursor` — incremental import state
+
+## Column conventions
+
+- Use `text` for all status columns (no PostgreSQL enums). Valid values documented in `platform_mappings.md`.
+- Every table that imports provider data MUST have `raw_data jsonb` with the original payload.
+- Every webhook event MUST store `payload jsonb` — immutable after insert.
+- jsonb array columns (`unit_types`, `participants`, etc.) use documented schemas — see examples in `ddl.sql`.
+
+## Provider docs
+
+| Provider | Docs |
+|---|---|
+| Ventrata | https://docs.ventrata.com/octo-core |
+| Bokun | https://bokun.io/developers |
+| FareHarbor | https://fareharbor.com/api/external/v1/ |
+| Bookeo | https://www.bookeo.com/apiref/ |
+
+## Implementation order
+
+1. ALTER `suppliers` — add `booking_system text`
+2. `experience_option`
+3. `availability_slot`
+4. `booking` + `booking_line`
+5. `external_ref`
+6. `webhook_event`
+7. `sync_cursor`
+
+## Data flow
+
+```
+Provider API / Webhook → webhook_event (immutable, payload stored)
+                       → projection columns updated on webhook_event
+                       → canonical tables (booking, booking_line, etc.)
+```
+
+## Status normalization
+
+Normalize provider statuses to canonical values:
+`draft`, `on_hold`, `reserved`, `pending`, `confirmed`, `rejected`, `cancelled`, `expired`, `failed`, `redeemed`, `no_show`, `rebooked`, `unknown`
+
+Per-provider mapping tables are in `msg-data_model/platform_mappings.md`.
+
+## External references
+
+All provider IDs MUST be stored in `external_ref`. This enables bidirectional lookup without scanning business tables.

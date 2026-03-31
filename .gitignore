@@ -4,3 +4,8 @@ msg-guide/
 msg-lambda-layers/
 msg-marketplace/
 msg-supabase-infra/
+msg-data_model/
+.env
+.env.*
+
+venv/

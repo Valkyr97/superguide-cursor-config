@@ -1,0 +1,77 @@
+---
+description: Enforce skill/subagent usage and require a transparency summary after every implementation
+alwaysApply: true
+---
+
+# Agent Workflow Requirements
+
+## 1. Skills Are Mandatory, Not Optional
+
+Before writing or editing code, check the available skills list for relevant matches. If a skill applies to the task, **read the entire skill file via the Read tool** and follow its guidance. This is not a suggestion — it is a requirement.
+
+Common triggers:
+- Creating/extracting Vue components → `vue-component-architecture`
+- Styling with Tailwind → `vue-styling-tailwind`
+- Forms or validation → `vue-forms-validation`
+- API calls or data fetching → `vue-state-and-data-fetching`
+- Backend endpoints → `backend-endpoint-crud`, `backend-joins-and-read-models`, etc.
+- Database migrations → `supabase-migrations`
+- React components → `react-component-patterns`
+
+If zero skills apply, that's fine — but you must check.
+
+## 2. Subagents for Specialized Domains
+
+There are three separate decisions regarding subagents:
+
+### 2a. Single specialized subagent (same-domain quality)
+
+When the task is **non-trivial implementation within one clear domain**, dispatch a **single specialized subagent** (`vue-frontend-engineer`, `backend-engineer`, `react-frontend-engineer`, etc.) for the full task.
+
+**Good fits:**
+- Same-domain Vue frontend work across several related files
+- Same-domain backend work across related endpoint/shared-layer files
+- Creating a new component, page, endpoint, or other non-trivial feature in one domain
+
+**Stay inline only when:**
+- The task is a trivial one-file edit (fix a typo, swap an SVG path, rename a variable)
+- The task is pure exploration or investigation with no code changes
+
+### 2b. Main-agent orchestration (cross-domain or coupled work)
+
+When work spans **multiple domains** or has **sequential dependencies**, the main agent stays responsible for sequencing and coordination. Each domain-contained chunk that meets 2a criteria should still be dispatched to its matching specialist -- the main agent should NOT do domain work inline when a specialist fits, and should NOT force one specialist to own work outside its best domain.
+
+**Use orchestration when:**
+- Work spans backend + frontend + database
+- Tasks depend on prior outputs (schema -> backend -> frontend)
+- Different parts of the task fit different specialist types
+
+### 2c. Parallel subagents (independence)
+
+When 2+ tasks are both **domain-contained** and **independent**, dispatch them as **separate parallel subagents** for speed. Read the `dispatching-parallel-agents` skill first.
+
+**Parallelize when:**
+- Tasks target different projects (e.g. msg-guest + msg-guide + msg-marketplace)
+- Tasks target different subsystems with no shared files
+
+**Do NOT parallelize when:**
+- Tasks edit the same file or the same page/flow
+- Tasks have sequential dependencies
+- Understanding one task requires context from another
+
+## 3. Transparency Summary (Required)
+
+Every implementation answer **must end** with a `## What was used` section listing:
+
+```
+## What was used
+
+| Category   | Items |
+|------------|-------|
+| Skills read | `vue-component-architecture`, `vue-styling-tailwind` (or "None — task was a trivial single-file edit") |
+| Subagents  | `vue-frontend-engineer` for ThemedListsSearchDialog (or "None — inline edit") |
+| Rules applied | `coding-standards` (always), `vue-frontend`, `mobile-first` (file-linked) |
+| Branch     | `wip` |
+```
+
+List **only what was actually read or dispatched**, not what was available. If a relevant skill or subagent was not used, explicitly say **why** it was skipped (e.g. "None — inline edit because this was a trivial single-file SVG swap" or "No subagent — main agent orchestrated a cross-domain coupled task").
