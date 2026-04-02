@@ -23,6 +23,26 @@ Guide the creation and management of Supabase database migrations, SQL conventio
 - Endpoint implementation -> use backend skills
 - Frontend data fetching -> use frontend skills
 
+## Design-First Workflow
+
+Schema changes follow a design-then-migrate flow:
+
+1. **Design** — update `msg-data_model/ddl.sql` (canonical DDL) and `msg-data_model/CHANGES.md` (rationale). Read both before creating any migration.
+2. **Migrate** — create the migration file in `msg-supabase-infra/supabase/migrations/`.
+3. **Apply** — run via psql or Supabase CLI against the target environment.
+4. **Verify** — confirm the change landed (see "Verification" section below).
+
+For booking-integration schema, also read `msg-data_model/platform_mappings.md` for provider field/status mappings.
+
+## Environment Targeting
+
+Follow the `database-environments` rule (always-applied) for credential resolution and safety protocol. Key points:
+
+- Default target is **WIP** (`develop` branch) unless the user explicitly says production.
+- Build psql URIs from `SUPABASE_DB_*` vars in the project's env file (`.env.wip` for WIP, `.env.dev` for production).
+- Always validate the connection with `psql "<uri>" -c "SELECT 1;"` before running real queries.
+- If a connection fails, follow the 3-step fallback in `database-environments`.
+
 ## Repository Context
 
 ### Structure
@@ -42,10 +62,12 @@ msg-supabase-infra/
   package.json        # Supabase CLI dependency
 ```
 
-### Supabase CLI
+### Supabase CLI (may hang)
+
+The CLI binary may hang indefinitely on startup due to network checks — even for purely local commands like `migration new`. If a command does not complete within 10 seconds, kill it and use the direct alternative below.
 
 ```bash
-# Create a new migration
+# Create a new migration (preferred when CLI works)
 supabase migration new <descriptive_name>
 
 # Apply migrations locally
@@ -58,9 +80,19 @@ supabase db push
 supabase db pull
 ```
 
+### Direct migration file creation (CLI fallback)
+
+If the CLI hangs, create migration files directly in `supabase/migrations/`:
+
+```
+YYYYMMDDHHMMSS_descriptive_name.sql
+```
+
+Generate the timestamp with `date -u +%Y%m%d%H%M%S`, or use a sequential counter (e.g. `20260401000001`, `20260401000002`) when creating multiple migrations in a batch. Apply via `psql -f` instead of `supabase db push`.
+
 ## Implementation Checklist
 
-1. **Use the Supabase CLI** to generate migration files. Never manually create timestamped filenames.
+1. **Create migration files** in `supabase/migrations/` with timestamped names. Prefer `supabase migration new <name>`, but if the CLI hangs (>10s), create directly as `YYYYMMDDHHMMSS_descriptive_name.sql`.
 2. **One logical change per migration.** Don't mix unrelated schema changes.
 3. **Use `IF NOT EXISTS` / `IF EXISTS`** for safety on CREATE/DROP statements.
 4. **Specify foreign key behavior.** Always include `ON DELETE` and `ON UPDATE` clauses.
@@ -98,6 +130,50 @@ create policy "Service role has full access"
   using (auth.role() = 'service_role');
 ```
 
+## Direct Database Access (psql)
+
+Use psql for schema inspection, migration verification, and ad-hoc reads.
+
+### Inspecting current schema
+
+```bash
+# List all tables in public schema
+psql "<uri>" -c "\dt public.*"
+
+# Describe a specific table
+psql "<uri>" -c "\d <table_name>"
+
+# List columns for a table via information_schema
+psql "<uri>" -c "select column_name, data_type, is_nullable, column_default from information_schema.columns where table_schema = 'public' and table_name = '<table>' order by ordinal_position;"
+
+# List indexes on a table
+psql "<uri>" -c "\di <table_name>*"
+
+# List RLS policies
+psql "<uri>" -c "select tablename, policyname, cmd, qual from pg_policies where schemaname = 'public' order by tablename;"
+```
+
+### Running a migration via psql
+
+```bash
+psql "<uri>" -f msg-supabase-infra/supabase/migrations/<migration_file>.sql
+```
+
+### Verification
+
+After applying any migration, verify the result:
+
+```bash
+# Check columns exist with expected types
+psql "<uri>" -c "select column_name, data_type from information_schema.columns where table_name = '<table>' order by ordinal_position;"
+
+# Check indexes were created
+psql "<uri>" -c "\di <table>*"
+
+# Check RLS is enabled
+psql "<uri>" -c "select relname, relrowsecurity from pg_class where relname = '<table>';"
+```
+
 ## Common Pitfalls
 
 - Forgetting to enable RLS on new tables.
@@ -109,9 +185,10 @@ create policy "Service role has full access"
 
 ## Definition of Done
 
-- Migration created via Supabase CLI with descriptive name.
+- Migration file created with timestamped name (via CLI or directly).
 - SQL is idempotent where possible (IF NOT EXISTS / IF EXISTS).
 - RLS enabled with appropriate policies on new tables.
 - Foreign keys have explicit ON DELETE/ON UPDATE behavior.
-- Tested locally with `supabase db reset`.
+- Tested locally with `supabase db reset` or verified via psql on WIP.
 - Backward compatible with all consuming apps (msg-guest, msg-guide, msg-marketplace).
+- Verified on target environment: columns, indexes, and RLS confirmed via `information_schema` or `\d`.

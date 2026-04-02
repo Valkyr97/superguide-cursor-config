@@ -1,0 +1,26 @@
+---
+description: Hard gate before any code changes — forces skill reading and subagent decision
+alwaysApply: true
+---
+
+# Pre-Implementation Gate
+
+Before making ANY code change (Write, StrReplace, Delete on source files), you MUST output a `## Pre-flight` block in your response text. No exceptions. If this block is missing and you made code changes, you violated the workflow — stop and redo.
+
+## Pre-flight (copy this template)
+
+```
+## Pre-flight
+
+1. **Skills to read:** [list every applicable skill from the triggers in agent-workflow.mdc, then READ each one before proceeding]
+2. **Subagent decision:** [which specialist subagent will do the work, OR justify inline with "trivial one-file edit"]
+3. **Files to touch:** [list every file to create or modify]
+```
+
+## Rules
+
+- The Pre-flight block MUST appear BEFORE your first edit tool call in the response.
+- You MUST actually read (via the Read tool) every skill listed in item 1 before writing code.
+- Item 2 must name a specific subagent type (`vue-frontend-engineer`, `backend-engineer`, etc.) for any non-trivial task. "Inline" is only valid for trivial single-file edits.
+- This gate applies even when a plan already exists — the plan does not substitute for reading skills and dispatching subagents.
+- During **plan mode** (read-only research, no edits), this gate does not apply.

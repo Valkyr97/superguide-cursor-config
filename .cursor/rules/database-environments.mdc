@@ -1,0 +1,71 @@
+---
+description: Database environment access, credential resolution, and safety protocol for Supabase
+globs: msg-supabase-infra/**,msg-data_model/**/*.sql,msg-data_model/**/CHANGES.md,msg-*/api/**/booking*,msg-*/api/**/availability*,msg-*/api/**/webhook*
+alwaysApply: false
+---
+
+# Database Environments
+
+## Environments
+
+Two Supabase environments exist. WIP is a persistent database branch of the production project (`marketplace-dev`).
+
+| Label              | Supabase branch | Project ref            | Env file suffix |
+|--------------------|-----------------|------------------------|-----------------|
+| WIP (develop)      | `develop`       | `epsckogevirxljqxyjwz` | `.env.wip`      |
+| Production (main)  | `main`          | `rqjogexftwfbvpyxlwmk` | `.env.dev`      |
+
+Default target is always **WIP** unless the user explicitly requests production.
+
+## Credential Resolution (3-step fallback)
+
+Env files are human-maintained copies that can diverge. Never trust a single file blindly.
+
+1. **Read env vars** from the project being worked on (e.g. `msg-guide/.env.wip` for WIP). Extract `SUPABASE_DB_HOST`, `SUPABASE_DB_USER`, `SUPABASE_DB_PASSWORD`, `SUPABASE_DB_PORT`, `SUPABASE_DB_NAME`.
+2. **Cross-reference** — if the file is missing or the connection fails, read the same env suffix from other subprojects (`msg-supabase-infra`, `msg-marketplace`, `msg-guide`, `msg-guest`, `msg-data_model`).
+3. **Supabase CLI** — definitive source when env files conflict or all fail. **Note:** The CLI binary may hang on startup due to network checks. If any command does not return within 10 seconds, kill it and rely on env files from other subprojects instead.
+   ```bash
+   cd msg-supabase-infra
+   npx supabase branches list --project-ref rqjogexftwfbvpyxlwmk
+   npx supabase branches get <branch-ref> --project-ref rqjogexftwfbvpyxlwmk
+   ```
+
+**Never hardcode** hosts, users, or passwords in rules, skills, scripts, or inline commands.
+
+## Connection Pattern
+
+Build the psql URI from env vars:
+
+```
+postgresql://$SUPABASE_DB_USER:$SUPABASE_DB_PASSWORD@$SUPABASE_DB_HOST:$SUPABASE_DB_PORT/$SUPABASE_DB_NAME
+```
+
+**Always validate** before running real queries:
+
+```bash
+psql "<uri>" -c "SELECT 1;"
+```
+
+If validation fails, move to the next fallback step.
+
+## Safety Protocol
+
+- **WIP is the default.** Never touch production without explicit user confirmation.
+- **Production writes:** confirm each destructive statement with the user before executing.
+- **DROP on any environment:** requires explicit user approval.
+- **After any schema change:** verify by querying `information_schema.columns` or `\d <table>`.
+
+## Schema Source of Truth
+
+- `msg-data_model/ddl.sql` — canonical DDL for the booking-integration model.
+- `msg-data_model/CHANGES.md` — rationale and change history.
+- `msg-data_model/platform_mappings.md` — provider status/field mappings.
+
+Read these before creating or modifying migrations.
+
+## Workflow
+
+1. **Design** — update `msg-data_model/ddl.sql` and `msg-data_model/CHANGES.md`.
+2. **Migrate** — create a migration file in `msg-supabase-infra/supabase/migrations/` via the Supabase CLI or write the SQL directly.
+3. **Apply** — run the migration via `psql` against the target environment or `supabase db push`.
+4. **Verify** — query `information_schema` or `\d <table>` to confirm the change landed.

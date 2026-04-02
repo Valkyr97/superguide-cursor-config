@@ -70,6 +70,10 @@ Guide frontend test implementation, accessibility practices, error reporting, an
 
 - `mountWithRouter(component, options)` — mounts a component with a configured Vue Router instance (`src/test/utils/test-utils.ts`)
 - `createMockCard(overrides)` — creates mock card/experience data for tests
+- `mockGetComputedStyle(styleMap)` — overrides `window.getComputedStyle` for jsdom (`src/test/utils/dom-helpers.ts`)
+- `cleanupInjectedScripts()` — removes all `<script>` tags from document body (`src/test/utils/dom-helpers.ts`)
+- `resetDocumentBody()` — resets `document.body.innerHTML` to empty (`src/test/utils/dom-helpers.ts`)
+- `getInjectedScript(src)` — queries a script element by `src` attribute (`src/test/utils/dom-helpers.ts`)
 
 ### Error reporting and observability
 
@@ -125,6 +129,26 @@ Guide frontend test implementation, accessibility practices, error reporting, an
 16. **Use `ErrorState.vue` for recoverable errors.** Do not build custom error UIs — use the existing shared component that supports retry actions.
 17. **Use `setupErrorReporting`/`useErrorReporting` for unhandled errors.** The global error handler is already configured in `main.ts`. For component-specific error reporting, use the `useErrorReporting` composable.
 18. **Log meaningful context in error reports.** When catching errors in composables, include the operation name and relevant identifiers (route, entity ID) so errors are diagnosable.
+
+### Testing DOM-manipulating composables
+
+Some composables interact directly with the DOM (script injection, style observation, element creation) rather than consuming APIs. These require a different testing approach from API-fetching composables.
+
+1. **DOM cleanup is mandatory.** Call `resetDocumentBody()` or `cleanupInjectedScripts()` from `src/test/utils/dom-helpers.ts` in `beforeEach` to prevent state leaking between tests.
+2. **`getComputedStyle` in jsdom returns empty strings.** If the composable branches on computed styles (e.g. `display === "none"`), use `mockGetComputedStyle({ display: "none" })` from `dom-helpers.ts` to simulate the expected CSS values.
+3. **Script injection assertions.** After invoking the composable, assert with `getInjectedScript(src)` or `document.querySelector('script[src="..."]')`. Test duplicate guards by calling the injection function twice and asserting only one `<script>` element exists.
+4. **Export complex private helpers for direct testing.** If a composable has non-trivial private functions (regex parsing, HTML processing, config resolution), export them and test directly. Deep integration tests through the composable's reactive API are harder and more fragile for pure logic.
+5. **Reactive lifecycle requires `nextTick`.** Use `await nextTick()` after changing ref values to flush Vue's watcher queue. Nested watchers (a `watch` inside another `watch`) may require multiple `nextTick()` calls.
+6. **`MutationObserver` is mocked globally.** The test setup (`src/test/setup.ts`) provides a mock `MutationObserver`. The mock exposes `_callback` for tests that need to manually trigger mutation callbacks.
+
+### Test-before-refactor workflow
+
+When writing tests before refactoring existing code:
+
+1. **Write tests against the current public API first.** Assert on observable behavior (return values, DOM state, side effects), not internal implementation details. This ensures tests survive the refactoring.
+2. **Exporting private helpers for testing is acceptable.** Adding `export` to an existing function is not a behavioral change — it's a safe pre-refactor step that enables direct unit testing.
+3. **Do not refactor the code under test.** The purpose is to lock in current behavior. Refactoring and testing in the same step defeats the safety net.
+4. **Cover the critical paths first.** Prioritize: (a) pure function logic (template resolution, data parsing), (b) side effects with observable output (script injection, DOM manipulation), (c) reactive lifecycle (watchers, cleanup).
 
 ## Common Pitfalls
 

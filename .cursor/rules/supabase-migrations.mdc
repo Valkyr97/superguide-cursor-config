@@ -9,8 +9,7 @@ alwaysApply: false
 ## Migration Files
 
 - Migrations live in `msg-supabase-infra/supabase/migrations/`.
-- Use the Supabase CLI to generate migration files: `supabase migration new <name>`.
-- Migration filenames are timestamped automatically — do not manually name them.
+- Prefer the Supabase CLI: `supabase migration new <name>`. If the CLI hangs (>10s), create the file directly as `YYYYMMDDHHMMSS_descriptive_name.sql`. Apply via `psql -f` instead of `supabase db push`.
 - Each migration should be atomic — one logical change per file.
 
 ## SQL Standards

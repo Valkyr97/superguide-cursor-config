@@ -5,6 +5,10 @@ alwaysApply: true
 
 # Agent Workflow Requirements
 
+## 0. Pre-Implementation Gate (BLOCKING)
+
+Before ANY code change, you MUST output a `## Pre-flight` block as defined in `pre-implementation-gate.mdc`. This is a hard gate — no edits until the block is written, skills are read, and subagent decision is made. See that rule for the template.
+
 ## 1. Skills Are Mandatory, Not Optional
 
 Before writing or editing code, check the available skills list for relevant matches. If a skill applies to the task, **read the entire skill file via the Read tool** and follow its guidance. This is not a suggestion — it is a requirement.
