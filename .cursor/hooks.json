@@ -7,6 +7,12 @@
         "matcher": "^(Write|StrReplace|Delete)$",
         "timeout": 5
       }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": ".cursor/hooks/approve-risky-shell.sh",
+        "timeout": 5
+      }
     ]
   }
 }
